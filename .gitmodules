@@ -1,0 +1,3 @@
+[submodule "modules/codewalker"]
+	path = modules/codewalker
+	url = https://github.com/dexyfex/CodeWalker.git
