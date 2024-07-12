@@ -3,6 +3,7 @@ mod libc_freer;
 use core::{ffi, time};
 use std::{
     collections::HashMap,
+    ffi::{CStr, CString},
     os::raw::c_void,
     path::{Path, PathBuf},
     ptr::null,
@@ -60,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Kind of a hacky way to force C# runtime to do gc
     tokio::spawn(async {
         loop {
-            tokio::time::sleep(time::Duration::from_secs(60)).await;
+            tokio::time::sleep(time::Duration::from_secs(30)).await;
             unsafe { gc_collect() };
         }
     });
@@ -131,7 +132,10 @@ fn import_xml<'a>(file_path: PathBuf) -> Option<(LibcFreer<&'a [u8]>, PathBuf)> 
                 "processing file: {:?}",
                 file_path.file_name().expect("no file name")
             );
-            let res = cw_import_xml((path.to_owned() + "\0").as_bytes().as_ptr());
+
+            let c_path = CString::new(path).expect("cstring creation failed");
+
+            let res = cw_import_xml(c_path.as_ptr() as *const u8);
             let mut out_path = PathBuf::new();
 
             if res.data == null() || res.file_name == null() {
@@ -141,7 +145,7 @@ fn import_xml<'a>(file_path: PathBuf) -> Option<(LibcFreer<&'a [u8]>, PathBuf)> 
             let slice = std::slice::from_raw_parts(res.data, res.data_len);
             let data = LibcFreer::new(slice, res.data as *mut c_void);
 
-            if let Ok(file_name) = ffi::CStr::from_ptr(res.file_name as *const i8).to_str() {
+            if let Ok(file_name) = CStr::from_ptr(res.file_name as *const i8).to_str() {
                 let file_name = file_name.to_owned();
                 libc::free(res.file_name as *mut libc::c_void);
                 match file_path.parent() {

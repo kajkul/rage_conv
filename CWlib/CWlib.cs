@@ -37,7 +37,6 @@ namespace CWlib
             var fpathin = path;
 
             var mformat = XmlMeta.GetXMLFormat(fnamel, out int trimlength);
-            Console.WriteLine(mformat);
 
             fname = fname.Substring(0, fname.Length - trimlength);
             fpathin = fpathin.Substring(0, fpathin.Length - trimlength);

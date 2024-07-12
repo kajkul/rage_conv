@@ -36,7 +36,6 @@ impl<T: ?Sized + Send + Sync> DerefMut for LibcFreer<T> {
 
 impl<T: ?Sized + Send + Sync> Drop for LibcFreer<T> {
     fn drop(&mut self) {
-        println!("freeing pointer: {:?}", self.ptr);
         unsafe { libc::free(self.ptr) }
     }
 }
