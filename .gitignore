@@ -1,0 +1,6 @@
+/target
+/.vs
+/CWlib/bin
+/CWlib/obj
+/test
+dotnet-output.txt

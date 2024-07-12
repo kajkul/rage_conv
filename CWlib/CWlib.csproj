@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <NativeLib>Static</NativeLib>
+    <PublishAot>true</PublishAot>
+    <StripSymbols>true</StripSymbols>
+    <SelfContained>true</SelfContained>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>	
+  </PropertyGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\modules\codewalker\CodeWalker.Core\CodeWalker.Core.csproj" />
+  </ItemGroup>
+
+  <Target Name="PrepareNativeLibTarget" AfterTargets="Publish" Condition=" '$(OS)' != 'Windows_NT' ">
+    <Copy SourceFiles="$(ProjectDir)$(PublishDir)CWlib.a" DestinationFiles="$(ProjectDir)$(PublishDir)libCWlib.a" />
+  </Target>
+
+</Project>
