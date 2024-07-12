@@ -9,5 +9,6 @@ unsafe impl Sync for RawCwCallRes {}
 
 extern "C" {
     pub fn cw_import_xml(path: *const u8) -> RawCwCallRes;
+    pub fn cw_export_texture_dict(path: *const u8);
     pub fn gc_collect();
 }

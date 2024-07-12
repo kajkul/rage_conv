@@ -56,8 +56,8 @@ pub struct Args {
     #[arg(short, long, default_value_t = Mode::Universal)]
     pub mode: Mode,
 
-    #[arg(short, long, default_value_t = true)]
-    pub ytd_export_textures: bool,
+    #[arg(short, long, default_value_t = false, help = "not implemented")]
+    pub ytd_import_dir: bool,
 
     #[arg(short, long, default_value_t = false)]
     pub recursive: bool,

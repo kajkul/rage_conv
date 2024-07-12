@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-mod convert;
+mod export;
 mod ffi;
+mod import;
 
 pub enum Type {
     TextureDict,
@@ -15,8 +16,8 @@ pub fn cw_gc() {
 
 pub async fn process_file(f_type: Type, path: PathBuf) {
     match f_type {
-        Type::Xml => convert::xml(path).await,
+        Type::Xml => import::xml(path).await,
         Type::Rage(_) => todo!(),
-        Type::TextureDict => todo!(),
+        Type::TextureDict => export::texture_dict(path).await,
     };
 }

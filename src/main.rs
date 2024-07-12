@@ -51,10 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 },
                                 "ytd" => match args.mode {
                                     Mode::Universal | Mode::Rage => {
-                                        if args.ytd_export_textures {
-                                            tx.send((cw_processing::Type::TextureDict, path))
-                                                .unwrap();
-                                        }
+                                        tx.send((cw_processing::Type::TextureDict, path)).unwrap();
                                     }
                                     _ => (),
                                 },

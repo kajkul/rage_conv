@@ -8,7 +8,7 @@ use std::{
 use libc::c_void;
 use tokio::fs;
 
-use crate::{args::ARGS, cw_processing::ffi::cw_import_xml, libc_freer::LibcFreer};
+use crate::{args::ARGS, cw_processing::ffi, libc_freer::LibcFreer};
 
 pub async fn xml(file_path: PathBuf) {
     unsafe {
@@ -26,7 +26,7 @@ pub async fn xml(file_path: PathBuf) {
 
             let c_path = CString::new(path).expect("cstring creation failed");
 
-            return cw_import_xml(c_path.as_ptr() as *const u8);
+            return ffi::cw_import_xml(c_path.as_ptr() as *const u8);
         })
         .await
         .expect("spawing processing task failed");
