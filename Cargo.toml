@@ -10,6 +10,7 @@ windows = "0.51.1"
 tokio = { version = "1", features = ["full"] }
 libc = "0.2.155"
 scopeguard = "1.2.0"
+clap = { version = "4.5.9", features = ["derive"] }
 
 [build-dependencies]
 ignore = "0.4.20"

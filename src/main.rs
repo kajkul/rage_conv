@@ -1,37 +1,27 @@
+mod args;
+mod cw_processing;
 mod libc_freer;
 
-use core::{ffi, time};
+use core::time;
 use std::{
     collections::HashMap,
-    ffi::{CStr, CString},
-    os::raw::c_void,
     path::{Path, PathBuf},
-    ptr::null,
     sync::{self, Arc, Mutex},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
-use libc_freer::LibcFreer;
+use args::{Args, Mode, ARGS};
+use clap::Parser;
 use notify::{EventKind, RecursiveMode, Watcher};
-use tokio::{fs, select};
+use tokio::select;
 
 extern crate windows;
 
-#[repr(C)]
-pub struct RawCwCallRes {
-    data: *const u8,
-    data_len: usize,
-    file_name: *const u8,
-}
-
-extern "C" {
-    pub fn cw_import_xml(path: *const u8) -> RawCwCallRes;
-    pub fn gc_collect();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (tx, rx) = sync::mpsc::channel::<PathBuf>();
+    let args = ARGS.get_or_init(|| Args::parse());
+
+    let (tx, rx) = sync::mpsc::channel::<(cw_processing::Type, PathBuf)>();
     let map = Arc::new(Mutex::new(HashMap::<
         PathBuf,
         tokio::sync::oneshot::Sender<()>,
@@ -43,10 +33,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 EventKind::Create(_) | EventKind::Modify(_) => {
                     event.paths.into_iter().for_each(|path| {
                         if let Some(ending) = path.extension() {
-                            if let Some(ext) = ending.to_str() {
-                                if ext == "xml" {
-                                    tx.send(path).unwrap();
-                                }
+                            let ext = ending.to_str().expect("could not convert extention to str");
+                            match ext {
+                                "xml" => match args.mode {
+                                    Mode::Universal | Mode::Xml => {
+                                        tx.send((cw_processing::Type::Xml, path)).unwrap()
+                                    }
+                                    _ => (),
+                                },
+                                "pso" | "rbf" | "rel" | "ynd" | "ynv" | "ycd" | "ybn" | "ydr"
+                                | "ydd" | "yft" | "ypt" | "yld" | "yed" | "ywr" | "yvr" | "awc"
+                                | "fxc" | "dat" | "ypdb" | "yfd" | "mrf" => match args.mode {
+                                    Mode::Universal | Mode::Rage => tx
+                                        .send((cw_processing::Type::Rage(ext.to_owned()), path))
+                                        .unwrap(),
+                                    _ => (),
+                                },
+                                "ytd" => match args.mode {
+                                    Mode::Universal | Mode::Rage => {
+                                        if args.ytd_export_textures {
+                                            tx.send((cw_processing::Type::TextureDict, path))
+                                                .unwrap();
+                                        }
+                                    }
+                                    _ => (),
+                                },
+                                _ => (),
                             }
                         }
                     })
@@ -56,17 +68,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => println!("watch error: {:?}", e),
         })?;
 
-    watcher.watch(Path::new("./test"), RecursiveMode::Recursive)?;
+    watcher.watch(
+        Path::new(&args.input_dir),
+        match args.recursive {
+            true => RecursiveMode::Recursive,
+            false => RecursiveMode::NonRecursive,
+        },
+    )?;
 
     // Kind of a hacky way to force C# runtime to do gc
     tokio::spawn(async {
         loop {
             tokio::time::sleep(time::Duration::from_secs(30)).await;
-            unsafe { gc_collect() };
+            cw_processing::cw_gc()
         }
     });
 
-    for path in rx {
+    for (f_type, path) in rx {
         let map = map.clone();
         tokio::spawn(async move {
             let (tx, rx) = tokio::sync::oneshot::channel::<()>();
@@ -87,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
               }
               _ = tokio::time::sleep(Duration::from_millis(250)) => {
                 if let Some(path) = remove_from_map(map, &path) {
-                  process_file(path).await
+                  cw_processing::process_file(f_type, path).await
                 }
               }
             }
@@ -106,59 +124,4 @@ fn remove_from_map(
         return Some(key);
     }
     None
-}
-
-async fn process_file(path: PathBuf) {
-    match tokio::task::spawn_blocking(move || import_xml(path)).await {
-        Ok(res) => {
-            match res {
-                Some((data, path)) => {
-                    fs::write(path, *data)
-                        .await
-                        .unwrap_or_else(|err| println!("error while writing res file {:?}", err));
-                }
-                None => println!("file processing failed"),
-            };
-        }
-        Err(err) => println!("error while calling import_xml: {:?}", err),
-    }
-}
-
-fn import_xml<'a>(file_path: PathBuf) -> Option<(LibcFreer<&'a [u8]>, PathBuf)> {
-    if let Some(path) = file_path.to_str() {
-        unsafe {
-            let now = Instant::now();
-            println!(
-                "processing file: {:?}",
-                file_path.file_name().expect("no file name")
-            );
-
-            let c_path = CString::new(path).expect("cstring creation failed");
-
-            let res = cw_import_xml(c_path.as_ptr() as *const u8);
-            let mut out_path = PathBuf::new();
-
-            if res.data == null() || res.file_name == null() {
-                println!("null ptr from cw");
-                return None;
-            }
-            let slice = std::slice::from_raw_parts(res.data, res.data_len);
-            let data = LibcFreer::new(slice, res.data as *mut c_void);
-
-            if let Ok(file_name) = CStr::from_ptr(res.file_name as *const i8).to_str() {
-                let file_name = file_name.to_owned();
-                libc::free(res.file_name as *mut libc::c_void);
-                match file_path.parent() {
-                    Some(dir) => {
-                        println!("import xml {} took: {:.2?}", file_name, now.elapsed());
-                        out_path.push(dir);
-                        out_path.push(file_name);
-                        return Some((data, out_path));
-                    }
-                    None => return None,
-                }
-            }
-        }
-    }
-    return None;
 }
