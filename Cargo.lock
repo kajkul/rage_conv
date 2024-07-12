@@ -3,18 +3,6 @@
 version = 3
 
 [[package]]
-name = "RAGEconv"
-version = "0.1.0"
-dependencies = [
- "ignore",
- "libc",
- "notify",
- "scopeguard",
- "tokio",
- "windows",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -367,6 +355,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "rage_conv"
+version = "0.1.0"
+dependencies = [
+ "ignore",
+ "libc",
+ "notify",
+ "scopeguard",
+ "tokio",
+ "windows",
 ]
 
 [[package]]
