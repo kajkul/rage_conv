@@ -2,6 +2,8 @@ use std::{env, path::PathBuf, process::Command};
 
 use ignore::{types::TypesBuilder, WalkBuilder};
 
+// Build script heavily inspired by
+// https://github.com/hamflx/call-net-from-rust-statically/blob/master/build.rs
 fn main() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let csharp_project = "CWlib";

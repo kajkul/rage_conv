@@ -16,7 +16,6 @@ use tokio::{fs, select};
 
 extern crate windows;
 
-#[derive(Debug)]
 #[repr(C)]
 pub struct RawCwCallRes {
     data: *const u8,
@@ -51,18 +50,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     })
                 }
-                _ => println!("event: {:?}", event),
+                _ => (),
             },
             Err(e) => println!("watch error: {:?}", e),
         })?;
 
     watcher.watch(Path::new("./test"), RecursiveMode::Recursive)?;
 
+    // Kind of a hacky way to force C# runtime to do gc
+    tokio::spawn(async {
+        loop {
+            tokio::time::sleep(time::Duration::from_secs(60)).await;
+            unsafe { gc_collect() };
+        }
+    });
+
     for path in rx {
         let map = map.clone();
         tokio::spawn(async move {
-            println!("processing update: {:?}", path);
-
             let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
             {
@@ -80,7 +85,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return
               }
               _ = tokio::time::sleep(Duration::from_millis(250)) => {
-                println!("finished for path {:?}", path);
                 if let Some(path) = remove_from_map(map, &path) {
                   process_file(path).await
                 }
@@ -111,9 +115,6 @@ async fn process_file(path: PathBuf) {
                     fs::write(path, *data)
                         .await
                         .unwrap_or_else(|err| println!("error while writing res file {:?}", err));
-                    unsafe {
-                        gc_collect();
-                    }
                 }
                 None => println!("file processing failed"),
             };
@@ -139,7 +140,6 @@ fn import_xml<'a>(file_path: PathBuf) -> Option<(LibcFreer<&'a [u8]>, PathBuf)> 
             }
             let slice = std::slice::from_raw_parts(res.data, res.data_len);
             let data = LibcFreer::new(slice, res.data as *mut c_void);
-            // println!("data: {:?} || {:?} == {:?}", data, res.data, data.as_ptr());
 
             if let Ok(file_name) = ffi::CStr::from_ptr(res.file_name as *const i8).to_str() {
                 let file_name = file_name.to_owned();
