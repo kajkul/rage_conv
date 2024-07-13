@@ -31,6 +31,6 @@ pub async fn texture_dict(file_path: PathBuf) {
         .await
         .expect("spawing processing task failed");
 
-        println!("import xml {} took: {:.2?}", file_name, now.elapsed());
+        println!("ytd export {} took: {:.2?}", file_name, now.elapsed());
     }
 }

@@ -1,3 +1,7 @@
+use std::{ffi::c_long, usize};
+
+use libc::size_t;
+
 #[repr(C)]
 pub struct RawCwCallRes {
     pub data: *const u8,

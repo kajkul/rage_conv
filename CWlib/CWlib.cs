@@ -1,6 +1,9 @@
 ﻿using CodeWalker.GameFiles;
+using CodeWalker.Utils;
+using CodeWalker.World;
 using System.Runtime.InteropServices;
 using System.Xml;
+using static CodeWalker.Utils.DDSIO;
 
 namespace CWlib
 {
@@ -62,6 +65,57 @@ namespace CWlib
             }
 
             return new CwCallRes { };
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "cw_export_texture_dict")]
+        public static void CwExportTextureDict(nint raw_path)
+        {
+            var path = Marshal.PtrToStringUTF8(raw_path);
+
+            if (path.Last() == '\n')
+            {
+                path = path.Remove(path.Length - 1);
+            }
+
+            if (!File.Exists(path))
+            {
+                Console.WriteLine("cw: no file");
+                return;
+            }
+
+            byte[] data = File.ReadAllBytes(path);
+
+            YtdFile ytd = new YtdFile();
+            ytd.Load(data);
+
+            if (ytd.TextureDict.Textures?.data_items == null) return;
+
+            var outDir = Path.Combine(Path.GetDirectoryName(path), Path.GetFileNameWithoutExtension(path));
+            
+            if (!Directory.Exists(outDir))
+            {
+                Directory.CreateDirectory(outDir);
+            }
+
+            foreach (var tex in ytd.TextureDict.Textures.data_items)
+            {
+                try {
+                    byte[] dds = DDSIO.GetDDSFile(tex);
+                    string bpath = outDir + "\\" + tex.Name;
+                    string fpath = bpath + ".dds";
+                    int c = 1;
+                    while (File.Exists(fpath))
+                    {
+                        fpath = bpath + "_Copy" + c.ToString() + ".dds";
+                        c++;
+                    }
+                File.WriteAllBytes(fpath, dds);
+                } catch (Exception e) {
+                    Console.WriteLine("error while processing {0} :: {1} - {2}", Path.GetFileName(path), tex.Name, e);
+                }
+
+
+            }
         }
 
         [UnmanagedCallersOnly(EntryPoint = "gc_collect")]
