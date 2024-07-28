@@ -53,7 +53,7 @@ pub struct Args {
     #[arg(short, long, default_value = "./out")]
     pub output_dir: PathBuf,
 
-    #[arg(short, long, default_value_t = Mode::Universal)]
+    #[arg(short, long, default_value_t = Mode::Xml)]
     pub mode: Mode,
 
     #[arg(short, long, default_value_t = false, help = "not implemented")]
